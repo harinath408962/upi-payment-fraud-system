@@ -28,3 +28,20 @@ class PaymentResponse(BaseModel):
     amount: Decimal
     currency: str
     transaction_status: str
+
+class PaymentStatusUpdate(BaseModel):
+    transaction_status: Literal[
+        "PENDING",
+        "SUCCESS",
+        "FAILED",
+        "CANCELLED"
+    ]
+
+
+class ProviderProcessRequest(BaseModel):
+    outcome: Literal[
+        "SUCCESS",
+        "FAILED",
+        "TIMEOUT",
+        "PENDING"
+    ]
