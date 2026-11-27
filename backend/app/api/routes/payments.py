@@ -3,12 +3,14 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.core.config import settings
 
 from app.schemas.payment import (
     PaymentCreate,
     PaymentResponse,
     PaymentStatusUpdate,
-    ProviderProcessRequest
+    ProviderProcessRequest,
+    ProviderConfirmationRequest
 )
 
 from app.services.payment_service import (
@@ -18,7 +20,8 @@ from app.services.payment_service import (
 )
 
 from app.services.provider_processing_service import (
-    process_provider_payment
+    process_provider_payment,
+    confirm_provider_payment
 )
 
 
@@ -51,25 +54,30 @@ def create_payment_endpoint(
         )
 
 
-# Manually update payment status (development/testing)
-@router.patch("/{transaction_id}/status", response_model=PaymentResponse)
-def update_payment_status_endpoint(
-    transaction_id: int,
-    status_data: PaymentStatusUpdate,
-    db: Session = Depends(get_db)
-):
-    try:
-        return update_payment_status(
-            db=db,
-            transaction_id=transaction_id,
-            new_status=status_data.transaction_status
-        )
+# Development-only manual status update
+if settings.DEBUG:
 
-    except PaymentServiceError as error:
-        raise HTTPException(
-            status_code=error.status_code,
-            detail=error.message
-        )
+    @router.patch(
+        "/{transaction_id}/status",
+        response_model=PaymentResponse
+    )
+    def update_payment_status_endpoint(
+        transaction_id: int,
+        status_data: PaymentStatusUpdate,
+        db: Session = Depends(get_db)
+    ):
+        try:
+            return update_payment_status(
+                db=db,
+                transaction_id=transaction_id,
+                new_status=status_data.transaction_status
+            )
+
+        except PaymentServiceError as error:
+            raise HTTPException(
+                status_code=error.status_code,
+                detail=error.message
+            )
 
 
 # Process payment through simulated provider
@@ -84,6 +92,30 @@ def process_provider_payment_endpoint(
 ):
     try:
         return process_provider_payment(
+            db=db,
+            transaction_id=transaction_id,
+            outcome=request.outcome
+        )
+
+    except PaymentServiceError as error:
+        raise HTTPException(
+            status_code=error.status_code,
+            detail=error.message
+        )
+
+
+# Confirm a pending payment through simulated provider callback
+@router.post(
+    "/{transaction_id}/confirm",
+    response_model=PaymentResponse
+)
+def confirm_provider_payment_endpoint(
+    transaction_id: int,
+    request: ProviderConfirmationRequest,
+    db: Session = Depends(get_db)
+):
+    try:
+        return confirm_provider_payment(
             db=db,
             transaction_id=transaction_id,
             outcome=request.outcome

@@ -1,3 +1,4 @@
+
 from decimal import Decimal
 from typing import Literal
 
@@ -29,6 +30,7 @@ class PaymentResponse(BaseModel):
     currency: str
     transaction_status: str
 
+
 class PaymentStatusUpdate(BaseModel):
     transaction_status: Literal[
         "PENDING",
@@ -45,3 +47,7 @@ class ProviderProcessRequest(BaseModel):
         "TIMEOUT",
         "PENDING"
     ]
+
+
+class ProviderConfirmationRequest(BaseModel):
+    outcome: Literal["SUCCESS", "FAILED"]
